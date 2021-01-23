@@ -12,6 +12,20 @@ def clean_homephone(number)
   number : "invalid phone number"
 end  
 
+def gather_reg_time(regdate)
+  modified_regdate = DateTime.strptime(regdate, "%m/%d/%y %H:%M")
+  $reg_cluster["hour"].push(modified_regdate.hour)
+end  
+
+def peak_reg_time()
+  arr_hour = $reg_cluster["hour"]
+  arr_hour.map { |h| [h, arr_hour.count(h)] }.sort { |a,b| b[1] <=> a[1] }[0..2].map { |val| if !$reg_cluster["peak_times"].include?(val)
+    $reg_cluster["peak_times"].push(val)
+  end }
+  puts $reg_cluster["peak_times"].inspect()
+  puts "Peak registration times is "
+end  
+
 def legislators_by_zipcode(zipcode)
   civic_info = Google::Apis::CivicinfoV2::CivicInfoService.new
   civic_info.key = 'AIzaSyClRzDqDh5MsXwnCWi0kOiiBivP6JsSyBw'
@@ -39,19 +53,26 @@ def save_thank_you_letter(id,form_letter)
 
 end  
 
+def run_prgrm
+
 contents = CSV.open(
   '../event_attendees.csv', 
   headers: true,
   header_converters: :symbol
 )
 
+$reg_cluster = {
+  "hour" => [],
+  "peak_times" => []
+}
 
 template_letter = File.read('../form_letter.erb')
 erb_template = ERB.new template_letter
 
+
 contents.each do |row|
   
-  regdate = peak_reg(regdate[:regdate])
+  regdate = row[:regdate]
   homephone = clean_homephone(row[:homephone])
   id = row[0]
   name = row[:first_name]
@@ -59,12 +80,19 @@ contents.each do |row|
   legislators = legislators_by_zipcode(zipcode)
   
   puts row
+  gather_reg_time(regdate)
 
   form_letter = erb_template.result(binding)
 
   save_thank_you_letter(id,form_letter)
 
 end  
+
+  peak_reg_time()
+  
+end 
+
+run_prgrm()
 
 
 
