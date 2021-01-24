@@ -12,18 +12,59 @@ def clean_homephone(number)
   number : "invalid phone number"
 end  
 
+#format and accumulate registration hours and days
 def gather_reg_time(regdate)
   modified_regdate = DateTime.strptime(regdate, "%m/%d/%y %H:%M")
   $reg_cluster["hour"].push(modified_regdate.hour)
+  $reg_cluster["days"].push(modified_regdate.wday)
 end  
 
+#find two peak registration times for marketing purposes
 def peak_reg_time()
   arr_hour = $reg_cluster["hour"]
   arr_hour.map { |h| [h, arr_hour.count(h)] }.sort { |a,b| b[1] <=> a[1] }[0..2].map { |val| if !$reg_cluster["peak_times"].include?(val)
     $reg_cluster["peak_times"].push(val)
   end }
-  puts $reg_cluster["peak_times"].inspect()
-  puts "Peak registration times is "
+
+  #format hour 
+  def format_hour (hour)
+    if hour.to_i > 12 
+      hour = (hour.to_i - 12).to_s + " P.M." 
+    else 
+      hour = hour + " A.M."
+    end  
+  end  
+
+  #peak registration days
+  arr_day = $reg_cluster["days"]
+  arr_day.map { |d| [d, arr_day.count(d)] }.sort { |a,b| b[1] <=> a[1] }.map { |val| if !$reg_cluster["peak_days"].include?(val)
+    $reg_cluster["peak_days"].push(val)
+  end }
+
+  #format day
+  def format_day (day)
+    case day
+    when 0
+      "Sunday"
+    when 1
+      "Monday"
+    when 2
+      "Tuesday"
+    when 3
+      "Wednesday"
+    when 4
+      "Thursday"
+    when 5
+      "Friday"
+    when 6
+      "Saturday"
+    else "day error"
+    end
+  end  
+     
+  #marketing message
+  puts "Peak registration times are #{format_hour($reg_cluster["peak_times"][0][0])} and #{format_hour($reg_cluster["peak_times"][1][0])} on #{format_day($reg_cluster["peak_days"][0][0])}s and #{format_day($reg_cluster["peak_days"][1][0])}s"
+
 end  
 
 def legislators_by_zipcode(zipcode)
@@ -63,7 +104,9 @@ contents = CSV.open(
 
 $reg_cluster = {
   "hour" => [],
-  "peak_times" => []
+  "peak_times" => [],
+  "days" => [],
+  "peak_days" => []
 }
 
 template_letter = File.read('../form_letter.erb')
